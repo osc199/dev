@@ -1,9 +1,15 @@
 {
-    "version": 2,
-    "functions": {
-      "api/gpt.js": {
-        "runtime": "nodejs18"
-      }
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/gpt.js",
+      "use": "@vercel/node"
     }
-  }
-  
+  ],
+  "routes": [
+    {
+      "src": "/api/gpt",
+      "dest": "api/gpt.js"
+    }
+  ]
+}
