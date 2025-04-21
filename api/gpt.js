@@ -7,7 +7,7 @@ export default async function handler(req, res) {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         model: "gpt-3.5-turbo",
@@ -20,12 +20,17 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    const gptReply = data.choices?.[0]?.message?.content || "Inget svar från GPT.";
+    console.log("GPT response:", data); // <-- Logga hela GPT-svaret
 
-    res.status(200).json({ reply: gptReply });
+    const reply = data.choices?.[0]?.message?.content;
+    if (!reply) {
+      return res.status(500).json({ error: "GPT gav inget svar.", raw: data });
+    }
+
+    res.status(200).json({ reply });
 
   } catch (error) {
-    console.error("Error från GPT:", error);
-    res.status(500).json({ error: "Något gick fel när GPT-anropet gjordes." });
+    console.error("GPT error:", error);
+    res.status(500).json({ error: "Fel i GPT-anropet.", details: error });
   }
 }
