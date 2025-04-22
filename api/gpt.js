@@ -14,13 +14,13 @@ export default async function handler(req, res) {
   const { data: profileData, error: profileError } = await supabase
     .from('user_profile_extended')
     .select('*')
-    .eq('user_id', userID)
+    .eq('auth_user_id', userID)
     .single();
 
   const { data: prefsData, error: prefsError } = await supabase
     .from('preferences')
     .select('*')
-    .eq('user_id', userID)
+    .eq('auth_user_id', userID)
     .single();
 
   if (userError || profileError || prefsError) {
