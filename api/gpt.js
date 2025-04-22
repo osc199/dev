@@ -4,6 +4,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 
 export default async function handler(req, res) {
   const { userID } = req.body;
+  console.log("Received userID:", userID);
 
   const { data: userData, error: userError } = await supabase
     .from('users')
@@ -14,17 +15,24 @@ export default async function handler(req, res) {
   const { data: profileData, error: profileError } = await supabase
     .from('user_profile_extended')
     .select('*')
-    .eq('user_id', userData.id)
+    .eq('user_id', userID)
     .single();
 
   const { data: prefsData, error: prefsError } = await supabase
     .from('preferences')
     .select('*')
-    .eq('user_id', userData.id)
+    .eq('user_id', userID)
     .single();
 
-  if (userError || profileError || prefsError) {
-    return res.status(500).json({ error: 'Failed to fetch user data' });
+  console.log("userData:", userData);
+  console.log("profileData:", profileData);
+  console.log("prefsData:", prefsData);
+
+  if (userError || profileError || prefsError || !userData || !profileData || !prefsData) {
+    return res.status(500).json({
+      error: 'Failed to fetch user data',
+      details: { userError, profileError, prefsError }
+    });
   }
 
   const prompt = `
