@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   const { data: userData, error: userError } = await supabase
     .from('users')
     .select('*')
-    .eq('id', userID)
+    .eq('auth_user_id', userID)
     .single();
 
   const { data: profileData, error: profileError } = await supabase
