@@ -3,12 +3,13 @@ import { createClient } from '@supabase/supabase-js'
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
 
 export default async function handler(req, res) {
-  console.log('=== GPT API CALLED ===');
+  console.log('GPT API CALLED ===');
   console.log('Request body:', req.body);
 
   const { userID } = req.body;
   console.log("Received userID:", userID);
 
+  // Hämta användaren via auth_user_id
   const { data: userData, error: userError } = await supabase
     .from('users')
     .select('*')
@@ -19,6 +20,7 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: 'No user found for this auth_user_id' });
   }
 
+  // Använd användarens riktiga id för resten
   const { data: profileData, error: profileError } = await supabase
     .from('user_profile_extended')
     .select('*')
@@ -31,13 +33,9 @@ export default async function handler(req, res) {
     .eq('user_id', userData.id)
     .single();
 
-  console.log("userData:", userData);
-  console.log("profileData:", profileData);
-  console.log("prefsData:", prefsData);
-
   if (profileError || prefsError || !profileData || !prefsData) {
     return res.status(500).json({
-      error: 'Failed to fetch user profile or preferences',
+      error: 'Failed to fetch profile or preferences data',
       details: { profileError, prefsError }
     });
   }
@@ -71,7 +69,7 @@ Från profilinställningar:
 Skapa en inspirerande och motiverande dagsplan för användaren utifrån informationen ovan. Ta hänsyn till mål, intressen, preferenser och utmaningar. Lägg gärna till en positiv reflektion, något att komma ihåg under dagen, och förslag på podd/musik och middag.
 `;
 
-  const response = await fetch('https://urldefense.com/v3/__https://api.openai.com/v1/chat/completions__;!!PhQDkBqkFGE!lC3CMfhBGnYTqHyrJyuPSi2qHQAv_rI0O3JNElEyKzmEPY6gTXeW9UplgMCVcvvn-E8RS4K-CdgZdkyWU6rBk-Tb$ ', {
+  const response = await fetch('https://urldefense.com/v3/__https://api.openai.com/v1/chat/completions__;!!PhQDkBqkFGE!gjpxTlKb-9BoCxM9djGsjZgPi-t8ZuhBJ5J11m6WKg0L2z-YGmkIbAbstdQNJwHqUPb1FCuF6eGc7CNw0SFrPJ21$ ', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
