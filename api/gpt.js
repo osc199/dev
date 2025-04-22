@@ -11,6 +11,7 @@ export default async function handler(req, res) {
     .from('users')
     .select('*')
     .eq('auth_user_id', userID)
+    
     if (!userData || userData.length === 0) {
       return res.status(404).json({ error: 'No user found for this auth_user_id' }); }    
 
