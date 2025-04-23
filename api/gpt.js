@@ -3,11 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
 
 export default async function handler(req, res) {
-  console.log('GPT API CALLED ===');
-  console.log('Request body:', req.body);
-
   const { userID } = req.body;
-  console.log("Received userID:", userID);
 
   const { data: userData, error: userError } = await supabase
     .from('users')
@@ -17,22 +13,6 @@ export default async function handler(req, res) {
 
   if (!userData || userError) {
     return res.status(404).json({ error: 'No user found for this auth_user_id' });
-  }
-
-  // Fetch weather based on location
-  let weatherSummary = 'Kunde inte hämta väder.';
-  try {
-    const location = userData.location;
-    const weatherRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(location)}&units=metric&lang=se&appid=${process.env.OPENWEATHER_API_KEY}`);
-    const weatherData = await weatherRes.json();
-
-    if (weatherData.weather && weatherData.weather.length > 0) {
-      const temp = weatherData.main.temp;
-      const desc = weatherData.weather[0].description;
-      weatherSummary = `${location}, ${temp}°C, ${desc}`;
-    }
-  } catch (err) {
-    console.error('Väderhämtning misslyckades:', err);
   }
 
   const { data: profileData, error: profileError } = await supabase
@@ -54,6 +34,39 @@ export default async function handler(req, res) {
     });
   }
 
+  // 1. Hämta väder
+  let weatherString = '';
+  try {
+    const location = userData.location;
+    const weatherRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(location)}&units=metric&lang=se&appid=${process.env.OPENWEATHER_API_KEY}`);
+    const weatherData = await weatherRes.json();
+
+    if (weatherData && weatherData.weather?.length > 0) {
+      const temp = weatherData.main.temp;
+      const desc = weatherData.weather[0].description;
+      weatherString = `${location}: ${temp}°C, ${desc}`;
+    }
+  } catch (err) {
+    weatherString = 'Vädret kunde inte hämtas.';
+  }
+
+  // 2. Hämta kalenderdata
+  let calendarEvents = '';
+  try {
+    const token = req.body.googleAccessToken;
+    const calendarRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=10&orderBy=startTime&singleEvents=true&timeMin=${new Date().toISOString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const calendarData = await calendarRes.json();
+    calendarEvents = calendarData.items?.map(e => {
+      const time = e.start.dateTime || e.start.date;
+      return `${time} – ${e.summary || 'Ingen titel'}`;
+    }).join('\n') || 'Inga kalenderhändelser hittades.';
+  } catch (e) {
+    calendarEvents = 'Kunde inte hämta kalenderdata.';
+  }
+
+  // 3. Skapa GPT-prompt
   const prompt = `
 Du är en personlig AI-assistent som hjälper användaren att nå sina mål och må bra i vardagen.
 
@@ -63,10 +76,6 @@ Här är information om användaren:
 - Mål: ${userData.goal || profileData.goal}
 - Musiksak: ${userData.music_taste}
 - Vaknar vanligtvis: ${userData.wake_up_time}
-
-Väder idag:
-- ${weatherSummary}
-- Ta hänsyn till vädret i dagens planering. Ge gärna tips på aktiviteter, kläder eller stämning.
 
 Från profilinställningar:
 - Fokusområde: ${prefsData.assistant_focus}
@@ -84,7 +93,13 @@ Från profilinställningar:
 - Favoriträtt: ${prefsData.favorite_meal}
 - Så här lyfter användaren sitt humör: ${prefsData.mood_booster}
 
-Skapa en inspirerande och motiverande dagsplan för användaren utifrån informationen ovan. Lägg gärna till en positiv reflektion, något att komma ihåg under dagen, och förslag på podd/musik och middag.
+Här är dagens väder:
+${weatherString}
+
+Här är användarens kalender (idag och närmaste dagar):
+${calendarEvents}
+
+Skapa en motiverande och realistisk dagsplan som tar hänsyn till målen, kalenderhändelserna, vädret och användarens preferenser. Var varm, inspirerande och ge gärna små tips och påminnelser.
 `;
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -103,7 +118,6 @@ Skapa en inspirerande och motiverande dagsplan för användaren utifrån informa
   });
 
   const text = await response.text();
-  console.log('OpenAI response text:', text);
 
   try {
     const data = JSON.parse(text);
@@ -111,7 +125,6 @@ Skapa en inspirerande och motiverande dagsplan för användaren utifrån informa
       reply: data.choices?.[0]?.message?.content || 'Inget svar.'
     });
   } catch (e) {
-    console.error('Failed to parse OpenAI response:', e);
     return res.status(500).json({ error: 'Invalid response from OpenAI', raw: text });
   }
 }

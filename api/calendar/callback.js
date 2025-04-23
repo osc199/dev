@@ -19,20 +19,55 @@ export default async function handler(req, res) {
     });
   
     const tokenData = await tokenRes.json();
-  
     const access_token = tokenData.access_token;
   
-    const eventsRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=5&orderBy=startTime&singleEvents=true&timeMin=' + new Date().toISOString(), {
+    const calendarRes = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=10&orderBy=startTime&singleEvents=true&timeMin=' + new Date().toISOString(), {
       headers: {
         Authorization: `Bearer ${access_token}`,
       },
     });
   
-    const events = await eventsRes.json();
+    const calendarData = await calendarRes.json();
+    const events = calendarData.items || [];
   
-    return res.status(200).json({
-      message: 'Synkade kalender!',
-      events: events.items || [],
+    // Format events for prompt
+    const formattedEvents = events.map(event => {
+      const time = event.start.dateTime || event.start.date;
+      return `${time} – ${event.summary || 'Ingen titel'}`;
+    }).join('\n');
+  
+    const gptPrompt = `
+  Du är en AI-assistent som hjälper användaren att förbereda sig för dagen.
+  
+  Här är användarens kalenderhändelser kommande dagar:
+  ${formattedEvents || 'Inga händelser hittades.'}
+  
+  Ge en kort och vänlig sammanfattning:
+  - Vad som är planerat idag.
+  - Viktiga saker i veckan.
+  - Om någon fyller år (om synligt).
+  - Samt en positiv och peppande kommentar inför veckan.
+  `;
+  
+    const gptRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: 'Du är en vänlig AI-assistent.' },
+          { role: 'user', content: gptPrompt }
+        ]
+      })
     });
+  
+    const gptJson = await gptRes.json();
+    const reply = gptJson.choices?.[0]?.message?.content || 'Inget svar från GPT.';
+  
+    // Skicka tillbaka till dashboard med svar
+    res.redirect(`/dashboard?calendarReply=${encodeURIComponent(reply)}`);
   }
   
