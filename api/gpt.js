@@ -84,15 +84,16 @@ Skapa en inspirerande och motiverande dagsplan för användaren utifrån informa
     }),
   });
 
-const text = await response.text();
-console.log('OpenAI response text:', text);
+  const text = await response.text();
+  console.log('OpenAI response text:', text);
 
-try {
-  const data = JSON.parse(text);
-  return res.status(200).json({
-    reply: data.choices?.[0]?.message?.content || 'Inget svar.'
-  });
-} catch (e) {
-  console.error('Failed to parse OpenAI response:', e);
-  return res.status(500).json({ error: 'Invalid response from OpenAI', raw: text });
-};
+  try {
+    const data = JSON.parse(text);
+    return res.status(200).json({
+      reply: data.choices?.[0]?.message?.content || 'Inget svar.'
+    });
+  } catch (e) {
+    console.error('Failed to parse OpenAI response:', e);
+    return res.status(500).json({ error: 'Invalid response from OpenAI', raw: text });
+  }
+}
