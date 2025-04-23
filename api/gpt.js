@@ -69,7 +69,7 @@ Från profilinställningar:
 Skapa en inspirerande och motiverande dagsplan för användaren utifrån informationen ovan. Ta hänsyn till mål, intressen, preferenser och utmaningar. Lägg gärna till en positiv reflektion, något att komma ihåg under dagen, och förslag på podd/musik och middag.
 `;
 
-  const response = await fetch('https://urldefense.com/v3/__https://api.openai.com/v1/chat/completions__;!!PhQDkBqkFGE!gjpxTlKb-9BoCxM9djGsjZgPi-t8ZuhBJ5J11m6WKg0L2z-YGmkIbAbstdQNJwHqUPb1FCuF6eGc7CNw0SFrPJ21$ ', {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -84,9 +84,14 @@ Skapa en inspirerande och motiverande dagsplan för användaren utifrån informa
     }),
   });
 
-  const data = await response.json();
+const text = await response.text();
+console.log('OpenAI response text:', text);
 
-  res.status(200).json({
-    reply: data.choices?.[0]?.message?.content || 'Inget svar från GPT.',
+try {
+  const data = JSON.parse(text);
+  return res.status(200).json({
+    reply: data.choices?.[0]?.message?.content || 'Inget svar.'
   });
-}
+} catch (e) {
+  console.error('Failed to parse OpenAI response:', e);
+  return res.status(500).json({ error: 'Invalid response from OpenAI', raw: text }); }
