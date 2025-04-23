@@ -94,4 +94,5 @@ try {
   });
 } catch (e) {
   console.error('Failed to parse OpenAI response:', e);
-  return res.status(500).json({ error: 'Invalid response from OpenAI', raw: text }); }
+  return res.status(500).json({ error: 'Invalid response from OpenAI', raw: text });
+}
