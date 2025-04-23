@@ -9,7 +9,6 @@ export default async function handler(req, res) {
   const { userID } = req.body;
   console.log("Received userID:", userID);
 
-  // Hämta användaren via auth_user_id
   const { data: userData, error: userError } = await supabase
     .from('users')
     .select('*')
@@ -20,7 +19,22 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: 'No user found for this auth_user_id' });
   }
 
-  // Använd användarens riktiga id för resten
+  // Fetch weather based on location
+  let weatherSummary = 'Kunde inte hämta väder.';
+  try {
+    const location = userData.location;
+    const weatherRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(location)}&units=metric&lang=se&appid=${process.env.OPENWEATHER_API_KEY}`);
+    const weatherData = await weatherRes.json();
+
+    if (weatherData.weather && weatherData.weather.length > 0) {
+      const temp = weatherData.main.temp;
+      const desc = weatherData.weather[0].description;
+      weatherSummary = `${location}, ${temp}°C, ${desc}`;
+    }
+  } catch (err) {
+    console.error('Väderhämtning misslyckades:', err);
+  }
+
   const { data: profileData, error: profileError } = await supabase
     .from('user_profile_extended')
     .select('*')
@@ -50,6 +64,10 @@ Här är information om användaren:
 - Musiksak: ${userData.music_taste}
 - Vaknar vanligtvis: ${userData.wake_up_time}
 
+Väder idag:
+- ${weatherSummary}
+- Ta hänsyn till vädret i dagens planering. Ge gärna tips på aktiviteter, kläder eller stämning.
+
 Från profilinställningar:
 - Fokusområde: ${prefsData.assistant_focus}
 - Påminnelse-nivå: ${prefsData.push_level}
@@ -66,7 +84,7 @@ Från profilinställningar:
 - Favoriträtt: ${prefsData.favorite_meal}
 - Så här lyfter användaren sitt humör: ${prefsData.mood_booster}
 
-Skapa en inspirerande och motiverande dagsplan för användaren utifrån informationen ovan. Ta hänsyn till mål, intressen, preferenser och utmaningar. Lägg gärna till en positiv reflektion, något att komma ihåg under dagen, och förslag på podd/musik och middag.
+Skapa en inspirerande och motiverande dagsplan för användaren utifrån informationen ovan. Lägg gärna till en positiv reflektion, något att komma ihåg under dagen, och förslag på podd/musik och middag.
 `;
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
